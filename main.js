@@ -1,3 +1,5 @@
+import { useStyle } from "./styles";
+
 // Navigate to a specific URL
 function navigateTo(url) {
   history.pushState(null, null, url);
@@ -14,12 +16,23 @@ function getHomePageTemplate() {
   `;
 }
 
+
 function getOrdersPageTemplate() {
   return `
-  <div></div>
-    <div id="content" class="hidden">
-    <h1 class="text-2xl mb-4 mt-8 text-center">Purchased Tickets</h1>
-    </div>
+  
+  <h1 class="text-2xl mb-4 mt-8 text-center">Purchased Tickets</h1>
+  
+<div class="purchases ml-6 mr-6">
+  <div class="bg-white px-4 py- gap-x-4 grid grid-cols-6 font-bold text-center">
+    <span class="flex-1 p-4 bg-gray-200">Name</span>
+    <span class="flex-1 p-4 bg-gray-200">Number of tickets</span>
+    <span class="flex-1 p-4 bg-gray-200">Description</span>
+    <span class="flex-1 p-4 bg-gray-200">Date</span>
+    <span class="flex-1 p-4 bg-gray-200">Price</span>
+    <span class="flex-1 p-4 bg-gray-200">Edit</span>
+  </div>
+  </div>
+ 
   `;
 }
 
@@ -59,6 +72,12 @@ function setupInitialPage() {
 async function fetchEvents(){
   const response = await fetch('http://localhost:8080/api/events', {mode:'cors'});
   const data = await response.json();
+  return data;
+}
+async function fetchOrders(){
+  const response = await fetch('http://172.16.99.82:8081/api/Order/GetAllOrders', {mode:'cors'});
+  const data = await response.json();
+  console.log(data);
   return data;
 }
 
@@ -148,9 +167,37 @@ async function renderHomePage() {
   
 }
 
-function renderOrdersPage(categories) {
+async function renderOrdersPage(categories) {
   const mainContentDiv = document.querySelector('.main-content-component');
-  mainContentDiv.innerHTML = getOrdersPageTemplate();
+  mainContentDiv.innerHTML=getOrdersPageTemplate();
+  const orders = await fetchOrders();
+  orders.forEach(order=>{
+    const orderRow = document.createElement('div');
+    orderRow.classList.add('flex-1');
+
+const contentMarkup =` <div class="purchases ml-6 mr-6">
+<div class="bg-white px-4 py- gap-x-4 grid grid-cols-6 font-bold">
+  <span class="flex-1 text-center">${order.eventName}</span>
+  <span class="flex-1 text-center">${order.numberOfTickets}</span>
+  <span class="flex-1 text-center">${order.ticketCategory}</span>
+  <span class="flex-1 text-center">${order.orderedAt.slice(0,10)}</span>
+  <span class="flex-1 text-center">${order.totalPrice}</span>
+  <div class="flex-1 text-center">
+  <button type="button">Modify </button>
+  <button type="button" >Delete </button>
+  </div>
+
+</div> 
+`;
+orderRow.innerHTML = contentMarkup;
+mainContentDiv.appendChild(orderRow);
+ 
+});
+  
+  //addLoader();
+  // setTimeout(()=>{
+  //   removeLoader();
+  // },200);
 }
 
 // Render content based on URL
