@@ -1,6 +1,7 @@
 module.exports = {
   content: [
     "./index.html", // Add the path to your HTML files
+    "./main.js",
     "./src/**/*.html",
     "./src/**/*.js",
   ],
