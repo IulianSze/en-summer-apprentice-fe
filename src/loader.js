@@ -5,15 +5,16 @@ export function removeLoader() {
     loader.classList.add('hidden');
     header.classList.remove('opacity-25');
     header.classList.remove('z-[-1]');
-    container.classList.remove('hidden');  
+    container.classList.remove('hidden');
 }
 
-export function addLoader(){
+export function addLoader() {
     const loader = document.querySelector('#loader');
     const header = document.querySelector('header');
     const container = document.querySelector('#content');
+    console.log({loader, header, container})
     loader.classList.remove('hidden');
     header.classList.add('opacity-25');
     header.classList.add('z-[-1]');
-    container.classList.add('hidden');  
-}   
+    container.classList.add('hidden');
+}

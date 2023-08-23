@@ -2,3 +2,8 @@
 @import 'tailwindcss/components';
 @import 'tailwindcss/utilities';
 
+@layer components{
+    .card{
+        @apply rounded-xl shadow-lg
+    }
+}

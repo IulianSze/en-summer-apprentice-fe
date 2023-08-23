@@ -162,6 +162,8 @@ const bookOfStyles = {
 
   
 
+  
+
     actionsWrapper: ['actions', 'flex', 'items-center', 'mt-4'],
 
   

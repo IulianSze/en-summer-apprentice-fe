@@ -1,4 +1,9 @@
 import { useStyle } from "./styles";
+import { addLoader, removeLoader } from "./src/loader";
+import { createEvent, getImageUrl,createOrder,addEvents,createRadioForEvents,getCheckedRadioValue} from "./functions";
+import { fetchEvents, fetchOrders,getTicketCategoryId} from "./fetches";
+import { updateOrder } from "./modify-and-delete-orders";
+
 
 // Navigate to a specific URL
 function navigateTo(url) {
@@ -10,6 +15,15 @@ function getHomePageTemplate() {
   return `
    <div id="content" >
       <img src="./src/assets/Endava.png" alt="summer">
+      <div class="flex flex-col items-center">
+        <div class="w-80">
+        <h1>Explore Events </h1>
+        <div class="filters flex flex-col">
+        <input type="text" id="filter-name" placeholder="Filter by name" class="px-4 mt-4 mb-4 py-2 border" />
+        </div>
+        <button id="filter-button" class="filter-btn px-4 py-2 text-red rounded-lg">Filter </button>
+        <button id="clear-button" class="filter-btn px-4 py-2 text-red rounded-lg">Clear selection </button>
+        </div>
       <div class="events flex items-center justify-center flex-wrap">
       </div>
     </div>
@@ -21,7 +35,7 @@ function getOrdersPageTemplate() {
   return `
   
   <h1 class="text-2xl mb-4 mt-8 text-center">Purchased Tickets</h1>
-  
+  <div id="content">
 <div class="purchases ml-6 mr-6">
   <div class="bg-white px-4 py- gap-x-4 grid grid-cols-6 font-bold text-center">
     <span class="flex-1 p-4 bg-gray-200">Name</span>
@@ -30,6 +44,7 @@ function getOrdersPageTemplate() {
     <span class="flex-1 p-4 bg-gray-200">Date</span>
     <span class="flex-1 p-4 bg-gray-200">Price</span>
     <span class="flex-1 p-4 bg-gray-200">Edit</span>
+  </div>
   </div>
   </div>
  
@@ -69,76 +84,31 @@ function setupInitialPage() {
   const initialUrl = window.location.pathname;
   renderContent(initialUrl);
 }
-async function fetchEvents(){
-  const response = await fetch('http://localhost:8080/api/events', {mode:'cors'});
-  const data = await response.json();
-  return data;
-}
-async function fetchOrders(){
-  const response = await fetch('http://172.16.99.82:8081/api/Order/GetAllOrders', {mode:'cors'});
-  const data = await response.json();
-  console.log(data);
-  return data;
-}
-
-async function getTicketCategoryId(eventId,ticketDescription){
-  
-  const response = await fetch(`http://localhost:8080/api/ticketCategory/${eventId}/${ticketDescription}`,{mode:'cors'});
-  
-  const data = await response.json();
-  return data.ticketCategoryID;
-}
 
 async function renderHomePage() {
   const mainContentDiv = document.querySelector('.main-content-component');
-  mainContentDiv.innerHTML=getHomePageTemplate();
+  mainContentDiv.innerHTML= getHomePageTemplate();
 
-  const eventsData = await fetchEvents();
+  const selectedVenue = getCheckedRadioValue('venue');
+  const selectedEventType = getCheckedRadioValue('event-type');
+  
+
+  addLoader();
+    const eventsData = await fetchEvents(selectedVenue,selectedEventType);
+    setTimeout(() => {
+    removeLoader();
+  }, 200);
+   
+  setupFilterEvents(eventsData);
+  createRadioForEvents(eventsData);
   eventsData.forEach(event=>{
     const selectorId = event.eventID+'s';
     const nbOfTicketsId=event.eventID+'n';
-    
-    
-  // Create the event card element
-  const eventCard = document.createElement('div');
-  eventCard.classList.add('event-card'); 
-  // Create the event content markup
-  var ImgUrl=getImageUrl(event.eventName);
-  const contentMarkup = `
-    <header>
-      <h2 class="event-title text-2xl font-bold">${event.eventName}</h2>
-    </header>
-    <div class="event-card-content">
-    <div class="event-card-image">
-      <img class="event-image" src="${ImgUrl}"> 
-      </div>
-      <div class="event-card-data"
-      <alt="${event.eventName}"  w-full height-200 rounded object-cover mb-4">
-      <p class="description text-gray-700">${event.eventDescription}</p>
-      <div class="inputs">
-      <select id="${selectorId}" name="ticketType">
-      <option value="Standard">Standard</option>
-     <option value="VIP">VIP</option>
-      </select>
-      <input id="${nbOfTicketsId}" type="number">
-      <button class="buy_ticket" type="button" id="${event.eventID}">Buy now</button>
-      <div>
-    
-    </div>
-  `;
-
-  eventCard.innerHTML = contentMarkup;
-  const eventsContainer = document.querySelector('.events');
-  // Append the event card to the events container
-  eventsContainer.appendChild(eventCard);
+    createEvent(event,selectorId,nbOfTicketsId);
+  
   const buy_btn = document.getElementById(`${event.eventID}`);
-  console.log(buy_btn);
- 
- 
-
   buy_btn.addEventListener("click", () => {
 
-    console.log(event.eventID);
     var e = document.getElementById(selectorId);
     var ticketDescription = e.value;
     console.log(ticketDescription);
@@ -162,42 +132,56 @@ async function renderHomePage() {
       }),
       });
   });
+  
+  toastr.success("Order placed successfully!");
   })
   });
+  const filterButton = document.getElementById('filter-button');
+    filterButton.addEventListener('click',()=>{
+      applyFilters();
+    });
+  
+  const clearButton=document.getElementById('clear-button');
+  clearButton.addEventListener('click',()=>{
+    deselectRadioButtonsOfType('venue');
+    deselectRadioButtonsOfType('event-type');
+  addEvents(eventsData);
+  });
+
   
 }
-
+function deselectRadioButtonsOfType(type) {
+  const radioButtons = document.querySelectorAll(`input[type="radio"][name="${type}"]`);
+  
+  let foundChecked = false;
+  radioButtons.forEach(radio => {
+    if (radio.checked) {
+      foundChecked = true;
+      radio.checked = false;
+    }
+  });
+  
+  // If no option is currently checked, check the first one to maintain the radio button behavior
+  if (!foundChecked && radioButtons.length > 0) {
+    radioButtons[0].checked = true;
+  }
+}
 async function renderOrdersPage(categories) {
+  
   const mainContentDiv = document.querySelector('.main-content-component');
   mainContentDiv.innerHTML=getOrdersPageTemplate();
+  addLoader();
   const orders = await fetchOrders();
-  orders.forEach(order=>{
-    const orderRow = document.createElement('div');
-    orderRow.classList.add('flex-1');
-
-const contentMarkup =` <div class="purchases ml-6 mr-6">
-<div class="bg-white px-4 py- gap-x-4 grid grid-cols-6 font-bold">
-  <span class="flex-1 text-center">${order.eventName}</span>
-  <span class="flex-1 text-center">${order.numberOfTickets}</span>
-  <span class="flex-1 text-center">${order.ticketCategory}</span>
-  <span class="flex-1 text-center">${order.orderedAt.slice(0,10)}</span>
-  <span class="flex-1 text-center">${order.totalPrice}</span>
-  <div class="flex-1 text-center">
-  <button type="button">Modify </button>
-  <button type="button" >Delete </button>
-  </div>
-
-</div> 
-`;
-orderRow.innerHTML = contentMarkup;
-mainContentDiv.appendChild(orderRow);
- 
-});
+    setTimeout(() => {
+    removeLoader();
+   }, 200);
   
-  //addLoader();
-  // setTimeout(()=>{
-  //   removeLoader();
-  // },200);
+  orders.forEach(order=>{
+    createOrder(order,mainContentDiv);
+    updateOrder(order);
+    
+});
+
 }
 
 // Render content based on URL
@@ -212,24 +196,46 @@ function renderContent(url) {
   }
 }
 
- function getImageUrl(nameEvent){
-  var imgUrl;
-  if (nameEvent=="Electric Castle"){
-    imgUrl="https://cdn.knd.ro/media/521/2861/1713/20331525/1/cand-are-loc-electric-castle-2023-vezi-unde-se-tine-cel-mai-electrizant-festival-al-verii-1.jpg"
-   }
-  if(nameEvent=="Untold")
-    imgUrl="https://funkytravel.ro/wp-content/uploads/2021/08/untold-.jpg"
-  if(nameEvent=="Meci de fotbal")
-    imgUrl="https://imgresizer.eurosport.com/unsafe/1200x0/filters:format(jpeg)/origin-imgresizer.eurosport.com/2019/09/18/2679033-55402970-2560-1440.jpg"
-  if(nameEvent=="Wine festival")
-   imgUrl="https://images.squarespace-cdn.com/content/v1/5640ee33e4b0c7ff8f6fc584/1506512313090-H5EA2LYS4KYQE3D65SNX/shutterstock_391495360.jpg?format=2500w"
-   if(nameEvent=="Danseaza pentru sanatate")
-   imgUrl="https://www.oradesibiu.ro/wp-content/uploads/2016/07/balet-1.jpg"
-  return imgUrl;
- }
+async function applyFilters(){
+
+    const selectedVenue = getCheckedRadioValue('venue');
+    const selectedEventType = getCheckedRadioValue('event-type');
+
+    const listOfEvents= await fetchEvents(selectedVenue,selectedEventType);
+    addEvents(listOfEvents);
+  
+}
+
+function liveSearch(events){
+  const filterInput=document.querySelector('#filter-name');
+
+  if(filterInput){
+    const searchValue = filterInput.value;
+
+    if(searchValue !== undefined){
+      const filteredEvents = events.filter((event)=>
+      event.eventName.toLowerCase().includes(searchValue.toLowerCase())
+      );
+       addEvents(filteredEvents);
+    }
+  }
+}
+
+function setupFilterEvents(events){
+  const nameFilterInput = document.querySelector('#filter-name');
+
+  if(nameFilterInput){
+    const filterInterval=500;
+    nameFilterInput.addEventListener('keyup',()=>{
+      setTimeout(liveSearch(events),filterInterval);
+    });
+  }
+}
+
 
 // Call the setup functions
 setupNavigationEvents();
 setupMobileMenuEvent();
 setupPopstateEvent();
 setupInitialPage();
+

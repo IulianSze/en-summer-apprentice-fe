@@ -4,6 +4,7 @@ module.exports = {
     "./main.js",
     "./src/**/*.html",
     "./src/**/*.js",
+    "./src/loader.js"
   ],
   theme: {
     // Your theme configuration
